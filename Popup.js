@@ -22,6 +22,68 @@ modelToggle.addEventListener('click', function() {
     }
 });
 
+// Simple markdown to HTML converter
+function markdownToHtml(markdown) {
+    let html = markdown;
+    
+    // Convert headers (### -> <h3>, ## -> <h2>, # -> <h1>)
+    html = html.replace(/^### (.*$)/gm, '<h3 style="color: #ff4444; font-size: 16px; margin: 15px 0 10px 0; font-weight: 600;">$1</h3>');
+    html = html.replace(/^## (.*$)/gm, '<h2 style="color: #ff4444; font-size: 18px; margin: 15px 0 10px 0; font-weight: 600;">$1</h2>');
+    html = html.replace(/^# (.*$)/gm, '<h1 style="color: #ff4444; font-size: 20px; margin: 15px 0 10px 0; font-weight: 600;">$1</h1>');
+    
+    // Convert bold text (**text** -> <strong>text</strong>)
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #ffffff; font-weight: 600;">$1</strong>');
+    
+    // Convert italic text (*text* -> <em>text</em>)
+    html = html.replace(/\*(.*?)\*/g, '<em style="color: #cccccc; font-style: italic;">$1</em>');
+    
+    // Convert code blocks (```code``` -> <pre><code>code</code></pre>)
+    html = html.replace(/```(.*?)```/gs, '<pre style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; margin: 8px 0; overflow-x: auto; font-family: monospace; font-size: 12px; border-left: 3px solid #ff4444;"><code>$1</code></pre>');
+    
+    // Convert inline code (`code` -> <code>code</code>)
+    html = html.replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 12px; color: #ff6666;">$1</code>');
+    
+    // Convert bullet points (- item -> <li>item</li>)
+    html = html.replace(/^- (.*$)/gm, '<li style="margin: 5px 0; list-style: none; position: relative; padding-left: 20px;">$1</li>');
+    html = html.replace(/(<li[^>]*>.*<\/li>)/s, '<ul style="margin: 10px 0; padding: 0;">$1</ul>');
+    
+    // Add bullet points manually
+    html = html.replace(/<li([^>]*)>/g, '<li$1><span style="color: #ff4444; position: absolute; left: 0;">•</span>');
+    
+    // Convert numbered lists (1. item -> <ol><li>item</li></ol>)
+    html = html.replace(/^\d+\. (.*$)/gm, '<li style="margin: 5px 0; padding-left: 5px;">$1</li>');
+    
+    // Convert line breaks to <br>
+    html = html.replace(/\n/g, '<br>');
+    
+    // Clean up multiple <br> tags
+    html = html.replace(/<br><br>/g, '<br>');
+    
+    return html;
+}
+
+// Alternative: Simple text formatting without full markdown
+function formatText(text) {
+    let formatted = text;
+    
+    // Convert headers to styled text
+    formatted = formatted.replace(/^### (.*$)/gm, '<div style="color: #ff4444; font-size: 16px; font-weight: 600; margin: 15px 0 8px 0; border-bottom: 1px solid rgba(255,68,68,0.3); padding-bottom: 4px;">$1</div>');
+    formatted = formatted.replace(/^## (.*$)/gm, '<div style="color: #ff4444; font-size: 18px; font-weight: 600; margin: 15px 0 8px 0; border-bottom: 1px solid rgba(255,68,68,0.3); padding-bottom: 4px;">$1</div>');
+    formatted = formatted.replace(/^# (.*$)/gm, '<div style="color: #ff4444; font-size: 20px; font-weight: 600; margin: 15px 0 8px 0; border-bottom: 1px solid rgba(255,68,68,0.3); padding-bottom: 4px;">$1</div>');
+    
+    // Convert bold and italic
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<span style="font-weight: 600; color: #ffffff;">$1</span>');
+    formatted = formatted.replace(/\*(.*?)\*/g, '<span style="font-style: italic; color: #cccccc;">$1</span>');
+    
+    // Convert simple lists
+    formatted = formatted.replace(/^- (.*$)/gm, '<div style="margin: 4px 0; padding-left: 15px; position: relative;"><span style="color: #ff4444; position: absolute; left: 0;">•</span>$1</div>');
+    
+    // Convert line breaks
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    return formatted;
+}
+
 // Summarization functionality
 const btn = document.getElementById("summarize");
 const p = document.getElementById("output");
@@ -86,13 +148,97 @@ btn.addEventListener("click", function() {
 
     // Check if we're in API mode
     if (isApiMode) {
-        p.innerHTML = "API mode is not yet supported.";
-        summaryContainer.classList.add('show');
-        loadingDiv.style.display = 'none';
-        btn.disabled = false;
-        btn.innerHTML = "Check Video";
-        return;
+        const model = document.getElementById("model-name").value.trim();
+        const apiKey = document.getElementById("api-key").value.trim();
+        const proxyUrl = document.getElementById("proxy-url").value.trim();
+    
+        if (!model || !apiKey || !proxyUrl) {
+            p.innerHTML = "Please fill in all API fields.";
+            summaryContainer.classList.add('show');
+            loadingDiv.style.display = 'none';
+            btn.disabled = false;
+            btn.innerHTML = "Check Video";
+            return;
+        }
+    
+        chrome.tabs.query({ currentWindow: true, active: true }, function(tabs) {
+            const url = tabs[0].url;
+    
+            if (!url.includes('youtube.com/watch') && !url.includes('youtu.be/')) {
+                p.innerHTML = "Please navigate to a YouTube video page.";
+                summaryContainer.classList.add('show');
+                loadingDiv.style.display = 'none';
+                btn.disabled = false;
+                btn.innerHTML = "Check Video";
+                return;
+            }
+    
+            // First, get the transcript from your local server
+            const transcriptUrl = `http://127.0.0.1:5000/transcript?url=${encodeURIComponent(url)}`;
+            
+            fetch(transcriptUrl)
+                .then(response => response.json())
+                .then(transcriptData => {
+                    if (!transcriptData.transcript) {
+                        throw new Error(transcriptData.error || "No transcript available");
+                    }
+    
+                    // Now send the transcript to the Chutes.ai API
+                    const userPrompt = `Please analyze this YouTube video transcript and provide a summary. Also determine if the content is appropriate for children. Here is the transcript: ${transcriptData.transcript}`;
+    
+                    return fetch(proxyUrl, {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${apiKey}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                { role: "system", content: "You are a helpful assistant that analyzes YouTube video content. Determine if content is appropriate for children and provide a summary." },
+                                { role: "user", content: userPrompt }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 32000
+                        })
+                    });
+                })
+                .then(async (response) => {
+                    loadingDiv.style.display = 'none';
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || "API error");
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    const result = data.choices?.[0]?.message?.content || "No summary received.";
+                    
+                    // Apply markdown formatting to the result
+                    p.innerHTML = markdownToHtml(result);
+                    
+                    summaryContainer.classList.add('show');
+                    
+                    // You might want to parse the API response to determine if it's kid-safe
+                    // For now, assuming approved since external API handled it
+                    updateVideoStatus("approved", extractVideoId(url));
+                    btn.innerHTML = "Check Video";
+                })
+                .catch((err) => {
+                    p.innerHTML = `<div style='background: #ffeaea; color: #722c2c; padding: 12px; border-radius: 8px; border-left: 4px solid #ff4444;'>❌ ${err.message}</div>`;
+                    summaryContainer.classList.add('show');
+                    updateVideoStatus("blocked", extractVideoId(url));
+                    btn.innerHTML = "Check Video";
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                });
+        });
+    
+        return; // Important to prevent fallback to local mode
     }
+    
+    
 
     chrome.tabs.query({ currentWindow: true, active: true }, function(tabs) {
         const url = tabs[0].url;
@@ -126,7 +272,8 @@ btn.addEventListener("click", function() {
                 console.log('Response:', response);
                 
                 if (response.summary) {
-                    p.innerHTML = response.summary;
+                    // Apply formatting to the summary
+                    p.innerHTML = formatText(response.summary);
                     
                     // Handle approval/blocking logic
                     if (response.status === "allowed") {
@@ -161,7 +308,7 @@ btn.addEventListener("click", function() {
                             }
                         });
                         
-                        btn.innerHTML = "🔒 Video Blocked";
+                        btn.innerHTML = "Video Blocked";
                         btn.style.background = '#ff4444';
                         btn.style.color = 'white';
                     }

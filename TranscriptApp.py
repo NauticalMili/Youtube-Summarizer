@@ -41,6 +41,41 @@ KID_SAFE_KEYWORDS = [
 
 cache = {}
 
+@application.route('/transcript', methods=['GET'])
+def transcript_api():
+    """Get transcript for a YouTube video"""
+    try:
+        url = request.args.get('url', '')
+        
+        print(f"Getting transcript for URL: {url}")
+        
+        video_id = extract_video_id(url)
+        if not video_id:
+            return jsonify({"error": "Invalid YouTube URL"}), 400
+
+        print(f"Extracting transcript for video ID: {video_id}")
+        transcript = get_transcript(video_id)
+        
+        if not transcript:
+            return jsonify({
+                "error": "Transcript unavailable or empty.",
+                "transcript": None
+            }), 404
+
+        cleaned_transcript = clean_transcript(transcript)
+        
+        return jsonify({
+            "transcript": cleaned_transcript,
+            "video_id": video_id
+        })
+
+    except Exception as e:
+        print(f"Error in transcript_api: {str(e)}")
+        return jsonify({
+            "error": f"Server error: {str(e)}",
+            "transcript": None
+        }), 500
+
 @application.route('/summary', methods=['GET'])
 def summary_api():
     try:
