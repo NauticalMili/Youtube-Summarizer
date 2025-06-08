@@ -88,38 +88,35 @@
                 transform: translateX(48px);
             }
 
-            .model-selector {
+            .length-control {
                 display: flex;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 8px;
-                padding: 4px;
+                align-items: center;
+                gap: 10px;
                 margin-bottom: 20px;
             }
 
-            .model-option {
-                flex: 1;
-                padding: 8px 12px;
-                text-align: center;
-                border-radius: 6px;
-                cursor: pointer;
-                transition: all 0.3s ease;
+            .length-control label {
                 font-size: 14px;
                 font-weight: 500;
+                color: #ffffff;
+                min-width: 80px;
             }
 
-            .model-option.active {
-                background: #ff4444;
-                color: white;
-                box-shadow: 0 2px 8px rgba(255, 68, 68, 0.4);
+            .length-control input {
+                flex: 1;
+                padding: 8px 10px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 68, 68, 0.3);
+                border-radius: 6px;
+                color: #ffffff;
+                font-size: 14px;
             }
 
-            .model-option:not(.active) {
-                color: #cccccc;
-            }
-
-            .model-option:not(.active):hover {
-                background: rgba(255, 68, 68, 0.2);
-                color: white;
+            .length-control input:focus {
+                outline: none;
+                border-color: #ff4444;
+                box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.2);
+                background: rgba(255, 255, 255, 0.15);
             }
 
             .api-settings {
@@ -168,30 +165,6 @@
 
             .input-field::placeholder {
                 color: #888888;
-            }
-
-            .length-control {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin-bottom: 20px;
-            }
-
-            .length-control label {
-                font-size: 14px;
-                font-weight: 500;
-                color: #ffffff;
-                min-width: 80px;
-            }
-
-            .length-control input {
-                flex: 1;
-                padding: 8px 10px;
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(255, 68, 68, 0.3);
-                border-radius: 6px;
-                color: #ffffff;
-                font-size: 14px;
             }
 
             .btn {
@@ -324,9 +297,9 @@
                 </div>
             </div>
             
-            <div class="model-selector" id="local-models">
-                <div class="model-option active" data-model="LSA">LSA</div>
-                <div class="model-option" data-model="BART">BART</div>
+            <div class="length-control" id="length-control">
+                <label for="max_length">Max Length:</label>
+                <input type="number" id="max_length" name="max_length" value="150">
             </div>
             
             <div class="api-settings" id="api-settings">
@@ -348,11 +321,6 @@
         </div>
         
         <div class="card">
-            <div class="length-control" id="length-control">
-                <label for="max_length">Max Length:</label>
-                <input type="number" id="max_length" name="max_length" value="150">
-            </div>
-            
             <button class="btn btn-primary" id="summarize">
                 Summarize
             </button>
@@ -379,6 +347,6 @@
             <a href="#" id="open-dashboard">Settings & Dashboard</a>
         </div>
 
-        <script src="Popup.js"></script>
+        <script src="popup.js"></script>
     </body>
 </html>

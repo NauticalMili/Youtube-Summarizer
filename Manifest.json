@@ -3,11 +3,18 @@
     "name": "Youtube Summarizer",
     "description": "Single click Chrome Extension to summarize YouTube videos using Transcript",
     "version": "1.0",
-    "permissions": ["activeTab", "declarativeContent"],
+    "permissions": ["activeTab", "declarativeContent", "scripting", "tabs"],
     "host_permissions": ["http://127.0.0.1:5000/*"],
     
     "action": {
         "default_title": "Summarize this video",
         "default_popup": "Popup.html"
-    }
+    },
+    "content_scripts": [
+  {
+    "matches": ["*://www.youtube.com/*"],
+    "js": ["content.js"],
+    "run_at": "document_end"
+  }
+]
 }
