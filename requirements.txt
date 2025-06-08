@@ -1,0 +1,8 @@
+flask
+transformers
+scikit-learn
+nltk
+langdetect
+yt-dlp
+requests
+youtube-transcript-api
