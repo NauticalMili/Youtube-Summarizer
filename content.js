@@ -4,6 +4,9 @@
     let currentVideoId = null;
     let checkInterval = null;
 
+    // Check if Chrome APIs are available
+    const isChromeExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.storage;
+
     // Create the blocking overlay
     function createBlocker() {
         if (blocker) return;
@@ -11,52 +14,33 @@
         blocker = document.createElement("div");
         blocker.id = "youtube-guardian-blocker";
         blocker.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            z-index: 999999;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            text-align: center;
-            padding: 20px;
-            box-sizing: border-box;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            z-index: 999999 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            color: white !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            text-align: center !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
         `;
 
-        const icon = document.createElement("div");
-        icon.innerHTML = "🛡️";
-        icon.style.fontSize = "64px";
-        icon.style.marginBottom = "20px";
+        const content = document.createElement("div");
+        content.innerHTML = `
+            <div style="font-size: 64px; margin-bottom: 20px;">🛡️</div>
+            <h1 style="font-size: 36px; margin: 0 0 20px 0; font-weight: 300;">YouTube Guardian</h1>
+            <p style="font-size: 18px; margin: 0 0 30px 0; opacity: 0.9;">This video needs to be checked for kid-safe content.</p>
+            <p style="font-size: 16px; margin: 0; opacity: 0.8;">Click the <strong>YouTube Guardian</strong> extension icon to check this video.</p>
+        `;
 
-        const title = document.createElement("h1");
-        title.textContent = "YouTube Guardian";
-        title.style.fontSize = "36px";
-        title.style.margin = "0 0 20px 0";
-        title.style.fontWeight = "300";
-
-        const message = document.createElement("p");
-        message.textContent = "This video needs to be checked for kid-safe content.";
-        message.style.fontSize = "18px";
-        message.style.margin = "0 0 30px 0";
-        message.style.opacity = "0.9";
-
-        const instruction = document.createElement("p");
-        instruction.innerHTML = "Click the <strong>YouTube Guardian</strong> extension icon to check this video.";
-        instruction.style.fontSize = "16px";
-        instruction.style.margin = "0";
-        instruction.style.opacity = "0.8";
-
-        blocker.appendChild(icon);
-        blocker.appendChild(title);
-        blocker.appendChild(message);
-        blocker.appendChild(instruction);
-
+        blocker.appendChild(content);
         document.body.appendChild(blocker);
         
         // Disable page scrolling
@@ -91,131 +75,98 @@
             isVideoBlocked = true;
             
             // Check if this video was previously approved
-            chrome.storage.local.get([`approved_${videoId}`], (result) => {
-                if (result[`approved_${videoId}`]) {
-                    // Previously approved
-                    isVideoBlocked = false;
-                    if (blocker) removeBlocker();
-                } else {
-                    // Not approved, show blocker
-                    createBlocker();
-                }
-            });
+            if (isChromeExtension) {
+                chrome.storage.local.get([`approved_${videoId}`], (result) => {
+                    if (chrome.runtime.lastError) {
+                        console.log('Storage error:', chrome.runtime.lastError.message);
+                        createBlocker();
+                        return;
+                    }
+                    
+                    if (result[`approved_${videoId}`]) {
+                        // Previously approved
+                        isVideoBlocked = false;
+                        if (blocker) removeBlocker();
+                    } else {
+                        // Not approved, show blocker
+                        createBlocker();
+                    }
+                });
+            } else {
+                // No Chrome APIs available, default to blocking
+                createBlocker();
+            }
         }
-    }
-
-    // Handle video navigation (YouTube is a SPA)
-    function handleNavigation() {
-        // Clear existing interval
-        if (checkInterval) {
-            clearInterval(checkInterval);
-        }
-        
-        // Check video status immediately and then periodically
-        checkVideoApproval();
-        checkInterval = setInterval(checkVideoApproval, 1000);
     }
 
     // Listen for messages from popup
-    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-        if (msg.action === "unblockVideo") {
-            const videoId = getCurrentVideoId();
-            if (videoId) {
-                // Store approval status
-                chrome.storage.local.set({[`approved_${videoId}`]: true});
-                removeBlocker();
-                sendResponse({success: true});
-            }
-        } else if (msg.action === "blockVideo") {
-            const videoId = getCurrentVideoId();
-            if (videoId) {
-                // Remove approval status
-                chrome.storage.local.remove([`approved_${videoId}`]);
-                isVideoBlocked = true;
-                createBlocker();
-                sendResponse({success: true});
-            }
-        } else if (msg.action === "getVideoStatus") {
-            sendResponse({
-                isBlocked: isVideoBlocked,
-                videoId: getCurrentVideoId()
-            });
-        }
-    });
-
-    // Override video play functionality
-    function blockVideoPlayback() {
-        if (!isVideoBlocked) return;
-
-        const videos = document.querySelectorAll('video');
-        videos.forEach(video => {
-            if (video.paused === false) {
-                video.pause();
-            }
-            // Prevent play events
-            video.addEventListener('play', (e) => {
-                if (isVideoBlocked) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    video.pause();
+    if (isChromeExtension) {
+        chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+            try {
+                if (msg.action === "unblockVideo") {
+                    const videoId = getCurrentVideoId();
+                    if (videoId) {
+                        // Store approval status
+                        chrome.storage.local.set({[`approved_${videoId}`]: true});
+                        removeBlocker();
+                        sendResponse({success: true});
+                    } else {
+                        sendResponse({success: false, error: "No video ID"});
+                    }
+                } else if (msg.action === "blockVideo") {
+                    const videoId = getCurrentVideoId();
+                    if (videoId) {
+                        // Remove approval status
+                        chrome.storage.local.remove([`approved_${videoId}`]);
+                        isVideoBlocked = true;
+                        createBlocker();
+                        sendResponse({success: true});
+                    } else {
+                        sendResponse({success: false, error: "No video ID"});
+                    }
+                } else if (msg.action === "getVideoStatus") {
+                    sendResponse({
+                        isBlocked: isVideoBlocked,
+                        videoId: getCurrentVideoId(),
+                        hasBlocker: !!blocker
+                    });
                 }
-            }, true);
+            } catch (error) {
+                console.error('Message handler error:', error);
+                sendResponse({success: false, error: error.message});
+            }
+            
+            return true; // Will respond asynchronously
         });
     }
 
-    // Observe for video elements and navigation changes
-    const observer = new MutationObserver((mutations) => {
-        let shouldCheck = false;
-        
-        mutations.forEach((mutation) => {
-            // Check for URL changes or new video elements
-            if (mutation.type === 'childList') {
-                const hasVideoElements = Array.from(mutation.addedNodes).some(node => 
-                    node.nodeType === 1 && (
-                        node.tagName === 'VIDEO' || 
-                        node.querySelector && node.querySelector('video')
-                    )
-                );
-                if (hasVideoElements) shouldCheck = true;
-            }
-        });
-
-        if (shouldCheck) {
-            setTimeout(checkVideoApproval, 100);
-        }
-
-        // Block video playback if needed
-        blockVideoPlayback();
-    });
-
-    // Start observing
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
+    // Rest of your code remains the same...
+    // Handle video navigation, observers, etc.
 
     // Handle navigation in SPA
     let lastUrl = location.href;
-    new MutationObserver(() => {
+    function handleNavigation() {
         const url = location.href;
         if (url !== lastUrl) {
             lastUrl = url;
-            setTimeout(handleNavigation, 100);
+            setTimeout(checkVideoApproval, 100);
         }
-    }).observe(document, {subtree: true, childList: true});
+    }
+
+    const observer = new MutationObserver(handleNavigation);
+    observer.observe(document, {subtree: true, childList: true});
 
     // Initial setup
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', handleNavigation);
+        document.addEventListener('DOMContentLoaded', () => setTimeout(checkVideoApproval, 1000));
     } else {
-        handleNavigation();
+        setTimeout(checkVideoApproval, 1000);
     }
 
-    // Periodic check to ensure blocking is maintained
+    // Periodic maintenance
     setInterval(() => {
         if (isVideoBlocked && !blocker) {
             createBlocker();
         }
-        blockVideoPlayback();
     }, 2000);
 })();

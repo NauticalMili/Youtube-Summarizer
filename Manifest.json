@@ -1,20 +1,61 @@
-{ 
+{
     "manifest_version": 3,
-    "name": "Youtube Summarizer",
-    "description": "Single click Chrome Extension to summarize YouTube videos using Transcript",
-    "version": "1.0",
-    "permissions": ["activeTab", "declarativeContent", "scripting", "tabs"],
-    "host_permissions": ["http://127.0.0.1:5000/*"],
+    "name": "YouTube Guardian - Kid-Safe Video Blocker",
+    "description": "Blocks YouTube videos until they're analyzed and approved as kid-safe content",
+    "version": "2.0",
+    "permissions": [
+        "activeTab", 
+        "declarativeContent", 
+        "scripting", 
+        "tabs",
+        "storage"
+    ],
+    "host_permissions": [
+        "http://127.0.0.1:5000/*",
+        "*://www.youtube.com/*",
+        "*://youtube.com/*",
+        "*://youtu.be/*"
+    ],
     
     "action": {
-        "default_title": "Summarize this video",
-        "default_popup": "Popup.html"
+        "default_title": "Check if video is kid-safe",
+        "default_popup": "Popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "32": "icons/icon32.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
     },
+    
+    "icons": {
+        "16": "icons/icon16.png",
+        "32": "icons/icon32.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    
     "content_scripts": [
-  {
-    "matches": ["*://www.youtube.com/*"],
-    "js": ["content.js"],
-    "run_at": "document_end"
-  }
-]
+        {
+            "matches": [
+                "*://www.youtube.com/*",
+                "*://youtube.com/*", 
+                "*://youtu.be/*"
+            ],
+            "js": ["content.js"],
+            "run_at": "document_start",
+            "all_frames": false
+        }
+    ],
+    
+    "background": {
+        "service_worker": "background.js"
+    },
+    
+    "web_accessible_resources": [
+        {
+            "resources": ["icons/*"],
+            "matches": ["*://www.youtube.com/*"]
+        }
+    ]
 }
