@@ -3,11 +3,14 @@ from flask_cors import CORS
 from transformers import pipeline
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import TruncatedSVD
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 from nltk.tokenize import sent_tokenize
 from langdetect import detect
 from youtube_captions import get_transcript
 import re
 import nltk
+import numpy as np
 
 # Download required NLTK data
 try:
@@ -362,20 +365,36 @@ def extractive_summarization(transcript: str) -> str:
         # Fallback: return first few sentences
         return " ".join(sentences[:3])
 
-def is_kid_safe(text: str) -> bool:
-    """Check if content is appropriate for children"""
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+sensitive_phrases = [
+    "suicide", "violence", "sexual activity", "murder", "blood", "porn", "rape", "drugs", "alcohol", "gun violence", "abuse"
+]
+sensitive_embeddings = embedding_model.encode(sensitive_phrases)
+
+
+def is_kid_safe(text: str, threshold: float = 0.5) -> bool:
     if not text:
         return True
-    
+
+    # Limit to 500 words to keep embeddings efficient
+    text = " ".join(text.split()[:500])
     text_lower = text.lower()
-    
-    # Check for explicit keywords
+
+    # Keyword-based check (always hard-blocks)
     for keyword in KID_SAFE_KEYWORDS:
         if keyword in text_lower:
             print(f"Found inappropriate keyword: {keyword}")
             return False
+
+    # Embedding-based similarity check
+    text_embedding = embedding_model.encode([text])
+    similarities = cosine_similarity(text_embedding, sensitive_embeddings)[0]
+    max_score = np.max(similarities)
+
+    print(f"Max similarity to sensitive content: {max_score:.3f}")
     
-    return True
+    # If similarity exceeds threshold, it's not safe
+    return max_score < threshold
 
 @application.route('/health', methods=['GET'])
 def health_check():

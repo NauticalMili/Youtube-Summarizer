@@ -454,6 +454,23 @@ function addManualControls() {
     summaryContainer.appendChild(toggleBtn);
     summaryContainer.appendChild(controlsDiv);
 }
+document.addEventListener('DOMContentLoaded', function () {
+    const dashboardLink = document.getElementById('open-dashboard');
+    
+    dashboardLink.addEventListener('click', function (e) {
+        e.preventDefault(); // Stop default anchor behavior
+
+        // Open your sticky/persistent dashboard window
+        window.open(
+            chrome.runtime.getURL("temp.html"), // or "app.html" if you renamed it
+            "yt_guardian_dashboard", // reuse window name to avoid duplicates
+            "width=500,height=600,resizable=yes"
+        );
+
+        // Close the current extension popup window
+        window.close();
+    });
+});
 
 // Initialize manual controls
 document.addEventListener('DOMContentLoaded', addManualControls);

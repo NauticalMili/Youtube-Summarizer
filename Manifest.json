@@ -38,9 +38,9 @@
     "content_scripts": [
         {
             "matches": [
-                "*://www.youtube.com/*",
-                "*://youtube.com/*", 
-                "*://youtu.be/*"
+                "*://www.youtube.com/watch*",
+                "*://youtube.com/watch*", 
+                "*://youtu.be/watch*"
             ],
             "js": ["content.js"],
             "run_at": "document_start",
