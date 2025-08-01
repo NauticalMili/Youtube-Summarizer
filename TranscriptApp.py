@@ -21,7 +21,7 @@ except LookupError:
 application = Flask(__name__)
 CORS(application)  # Enable CORS for Chrome extension
 
-# Use a good model (you can change to bart-large-cnn if needed)
+#(you can change to bart-large-cnn if needed)
 try:
     summarizer = pipeline(
         'summarization',
@@ -127,7 +127,7 @@ def summary_api():
             token_count = len(tokenizer.encode(cleaned_transcript))
             print(f"Token count: {token_count}")
             
-            if token_count > 900:  # Leave buffer for model processing
+            if token_count > 900:  
                 summary = smart_chunked_summarization(cleaned_transcript, max_length)
             else:
                 summary = abstractive_summarization(cleaned_transcript, max_length)
