@@ -1,4 +1,4 @@
-Made with Faiz Khan
+Made by Faiz Khan & Milind Nautiyal
 
 ---
 
